@@ -2,3 +2,6 @@
 node_modules/
 *.log
 are-comparison/*.log
+
+# Mermaid sources (intermediate, regenerate via mmdc)
+*.mmd

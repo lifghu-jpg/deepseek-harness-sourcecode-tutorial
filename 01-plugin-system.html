@@ -75,9 +75,7 @@
 
 <h2>1. 顶层:Mermaid 总览</h2>
 
-<div class="mermaid">
-<img class="mermaid-svg" src="assets/01-plugin-system-01.svg" alt="mermaid diagram 1" />
-</div>
+<img class="mermaid-svg" src="assets/01-plugin-system-01.png" alt="mermaid diagram 1" />
 
 <h2>2. 关键递归元素(oh-my-mermaid style)</h2>
 
@@ -108,9 +106,7 @@
   <b>Status</b>: <b style="color:var(--warn)">group</b>(包含 profile / bundle / patch 三个子模块)
 </div>
 
-<div class="mermaid">
-<img class="mermaid-svg" src="assets/01-plugin-system-02.svg" alt="mermaid diagram 2" />
-</div>
+<img class="mermaid-svg" src="assets/01-plugin-system-02.png" alt="mermaid diagram 2" />
 
 <h3>2.3 Bundle 层(<code>packages/bundle/</code>)</h3>
 
@@ -129,9 +125,7 @@
   <b>Status</b>: <b style="color:var(--warn)">group</b>(6 个 bundle)
 </div>
 
-<div class="mermaid">
-<img class="mermaid-svg" src="assets/01-plugin-system-03.svg" alt="mermaid diagram 3" />
-</div>
+<img class="mermaid-svg" src="assets/01-plugin-system-03.png" alt="mermaid diagram 3" />
 
 <div class="callout">
   <b>⚠️ 不变量</b>:<code>dsh-sdk-minimal</code> 故意不叠 <code>dsh-base</code>。它是一个完整的显式 SDK 树,而不是基于共享第一层。改 <code>dsh-base</code> 时要小心,可能影响 4 个 profile。
@@ -252,7 +246,6 @@
 </footer>
 
 </div>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>
+
 </body>
 </html>

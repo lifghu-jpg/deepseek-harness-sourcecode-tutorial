@@ -71,9 +71,7 @@
 
 <h2>1. 关系图(5 抽象 + 协作)</h2>
 
-<div class="mermaid">
-<img class="mermaid-svg" src="assets/02-cordis-harness-01.svg" alt="mermaid diagram 1" />
-</div>
+<img class="mermaid-svg" src="assets/02-cordis-harness-01.png" alt="mermaid diagram 1" />
 
 <h2>2. 抽象 1:Cordis Plugin Tree</h2>
 
@@ -149,9 +147,7 @@ ctx.on('agent/pre-step', async (decision, next) => {
 
 <h3>Turn Flow 时序(摘自 <code>docs/architecture.md</code>)</h3>
 
-<div class="mermaid">
-<img class="mermaid-svg" src="assets/02-cordis-harness-02.svg" alt="Turn flow sequence diagram: inbox to pre-step to loop to model to tools, with waterfall listeners and serial turn-stopping" />
-</div>
+<img class="mermaid-svg" src="assets/02-cordis-harness-02.png" alt="Turn flow sequence diagram: inbox to pre-step to loop to model to tools, with waterfall listeners and serial turn-stopping" />
 
 <h2>5. 抽象 4:Capability Seam(能力接缝)</h2>
 
@@ -171,9 +167,7 @@ ctx.on('agent/pre-step', async (decision, next) => {
 
 <h3>Seam 图示</h3>
 
-<div class="mermaid">
-<img class="mermaid-svg" src="assets/02-cordis-harness-03.svg" alt="mermaid diagram 3" />
-</div>
+<img class="mermaid-svg" src="assets/02-cordis-harness-03.png" alt="mermaid diagram 3" />
 
 <h2>6. 抽象 5:Profile + Bundle(配置叠加层)</h2>
 
@@ -231,7 +225,6 @@ ctx.on('agent/pre-step', async (decision, next) => {
 </footer>
 
 </div>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>
+
 </body>
 </html>
