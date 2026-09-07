@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DeepSeek Harness 源码教程 — 03 52 包巡礼</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #1f232c;
+    --border: #2a2f3a; --text: #d6d8de; --muted: #8b91a0;
+    --accent: #89b4fa; --accent2: #a6e3a1; --warn: #f38ba8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.65; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px 28px; }
+  h1 { font-size: 30px; color: #fff; margin: 0 0 8px; }
+  h2 { font-size: 22px; color: #fff; margin: 40px 0 12px;
+       border-left: 4px solid var(--accent); padding-left: 12px; }
+  h3 { font-size: 17px; color: var(--accent); margin: 24px 0 8px; }
+  p, li { font-size: 14px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 0; }
+  .nav a { background: var(--panel2); border: 1px solid var(--border);
+           color: var(--text); padding: 6px 14px; border-radius: 6px;
+           text-decoration: none; font-size: 13px; }
+  .nav a.current { background: var(--accent); color: #1e1e2e; border-color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 8px; padding: 14px 18px; margin: 12px 0; }
+  .pkg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+              gap: 10px; margin: 14px 0; }
+  .pkg { background: var(--panel); border: 1px solid var(--border);
+         border-radius: 6px; padding: 10px 14px; font-size: 13px; }
+  .pkg b { color: var(--accent2); font-family: monospace; }
+  .pkg .ctx { color: var(--warn); font-family: monospace; font-size: 12px; }
+  .pkg p { margin: 4px 0; color: var(--text); }
+  .group-header { color: var(--accent); font-size: 16px; margin: 24px 0 8px;
+                  padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+  pre { background: #1a1d24; border: 1px solid var(--border); border-radius: 6px;
+        padding: 12px 16px; overflow-x: auto; font-size: 13px;
+        font-family: "JetBrains Mono",Consolas,monospace; }
+  code { background: #1a1d24; padding: 2px 6px; border-radius: 3px;
+         font-family: "JetBrains Mono",Consolas,monospace; font-size: 13px; }
+  pre code { background: transparent; padding: 0; }
+  .callout { background: #2a2030; border-left: 3px solid var(--warn);
+             padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 16px 0; }
+  .callout.tip { background: #1f2a24; border-left-color: var(--accent2); }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  th { background: var(--panel2); color: var(--accent); }
+  td { background: var(--panel); }
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border);
+           color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>📦 03 — 52 包巡礼(per-package 摘要)</h1>
+  <p class="meta">视角: agents-reverse-engineer 风格 — 每包一个 summary,post-order 自底向上</p>
+  <nav class="nav">
+    <a href="./00-overview.html">00 总览</a>
+    <a href="./01-plugin-system.html">01 插件</a>
+    <a href="./02-cordis-harness.html">02 抽象</a>
+    <a class="current">03 包巡礼</a>
+    <a href="./04-study-cards/">04 卡片</a>
+  </nav>
+</header>
+
+<div class="callout tip">
+  <b>本节目标</b>: 52 个 package 全部走过一遍,每个一句话职责 + ctx 键 + 关键依赖。按 <code>agents-reverse-engineer</code> 的 per-directory AGENTS.md 风格,但合并到一页面里方便横向对比。
+</div>
+
+<h2>0. 整体分类(7 大组)</h2>
+
+<table>
+  <tr><th>组</th><th>包数</th><th>职责</th></tr>
+  <tr><td>core/</td><td>9</td><td>产品 API 骨架:session / prompt / tools / agent / agent-loop / scope</td></tr>
+  <tr><td>llm/</td><td>6</td><td>LLM 能力:Definition + DeepSeek / pi-ai / retry / token-meter</td></tr>
+  <tr><td>shell/</td><td>7</td><td>bash / pwsh 能力:Definition + local + sandbox Providers + tool Consumers</td></tr>
+  <tr><td>bundle/</td><td>6</td><td>可安装的 dsh --profile 叠加层</td></tr>
+  <tr><td>boot/</td><td>2</td><td>profile / 应用启动 glue</td></tr>
+  <tr><td>api/</td><td>1</td><td>Remote BFF assembly + Typert RPC gateway</td></tr>
+  <tr><td>typert/</td><td>1</td><td>类型图生成器 + 加载器 + 运行时注册表</td></tr>
+  <tr><td>其他(35+)</td><td>~35</td><td>e2b / terminal / fs / lsp / skill / web / compaction / context / subagent / workflow / webhook / todo / plan / preset / guard / hooks / session / identity / settings / credentials / acp / interaction / sdk / experimental / support / util / schedule / attachment / api / client / code-runtime / extensions / feedback / goal / runtime-diagnostics / sandbox / self-modification / spill / storage / subagent / test-support</td></tr>
+</table>
+
+<h2>1. core/(产品骨架,9 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg">
+    <b>core/session</b><span class="ctx">ctx.sessions</span>
+    <p>append-only SessionEvent log + 内存 store</p>
+  </div>
+  <div class="pkg">
+    <b>core/system-prompt</b><span class="ctx">ctx.systemPrompt</span>
+    <p>prompt 段 + tool-schema 装配</p>
+  </div>
+  <div class="pkg">
+    <b>core/tools</b><span class="ctx">ctx.tools</span>
+    <p>scoped tool registry + 守卫执行 pipeline</p>
+  </div>
+  <div class="pkg">
+    <b>core/agent</b><span class="ctx">ctx.agents</span>
+    <p>Agent interface + live registry + agent/* events</p>
+  </div>
+  <div class="pkg">
+    <b>core/agent-loop</b><span class="ctx">ctx.agentLoop</span>
+    <p>默认驱动(实现 Agent interface)</p>
+  </div>
+  <div class="pkg">
+    <b>core/scope</b><span class="ctx">lib</span>
+    <p>per-agent scoped-registration 原语(无 ctx 键)</p>
+  </div>
+  <div class="pkg">
+    <b>core/agent-default-model</b>
+    <p>默认模型选择策略</p>
+  </div>
+  <div class="pkg">
+    <b>core/agent-tool-presentation</b>
+    <p>tool 列表在 UI 里的展示逻辑</p>
+  </div>
+  <div class="pkg">
+    <b>core/README</b>
+    <p>overview only</p>
+  </div>
+</div>
+
+<h2>2. llm/(LLM 能力,6 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg">
+    <b>llm/llm</b><span class="ctx">ctx.llm</span>
+    <p>消息 / 流词汇 + adapter 接缝</p>
+  </div>
+  <div class="pkg">
+    <b>llm/llm-deepseek</b>
+    <p>DeepSeek Provider 适配</p>
+  </div>
+  <div class="pkg">
+    <b>llm/llm-pi-ai</b>
+    <p>pi-ai Provider 适配</p>
+  </div>
+  <div class="pkg">
+    <b>llm/llm-retry</b>
+    <p>带退避的重试策略</p>
+  </div>
+  <div class="pkg">
+    <b>llm/token-meter</b>
+    <p>token 计数 / 计费</p>
+  </div>
+  <div class="pkg">
+    <b>llm/deepseek-llm-api-extensions</b>
+    <p>DeepSeek 私有字段扩展</p>
+  </div>
+  <div class="pkg">
+    <b>llm/plugin-package-inventory-deepseek</b>
+    <p>DeepSeek 包的清单元数据</p>
+  </div>
+</div>
+
+<h2>3. shell/(Shell 能力,7 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg">
+    <b>shell/shell</b><span class="ctx">ctx.shell</span>
+    <p>shell Definition(接口契约)</p>
+  </div>
+  <div class="pkg">
+    <b>shell/shell-env</b>
+    <p>环境变量处理</p>
+  </div>
+  <div class="pkg">
+    <b>shell/bash-local</b>
+    <p>本地 bash provider</p>
+  </div>
+  <div class="pkg">
+    <b>shell/bash-sandbox</b>
+    <p>沙箱 bash provider</p>
+  </div>
+  <div class="pkg">
+    <b>shell/pwsh-local</b>
+    <p>本地 PowerShell provider</p>
+  </div>
+  <div class="pkg">
+    <b>shell/pwsh-sandbox</b>
+    <p>沙箱 PowerShell provider</p>
+  </div>
+  <div class="pkg">
+    <b>shell/tool-bash</b>
+    <p>bash tool(给 LLM 调用)</p>
+  </div>
+  <div class="pkg">
+    <b>shell/tool-bash-persistent</b>
+    <p>持久 bash 会话 tool</p>
+  </div>
+  <div class="pkg">
+    <b>shell/tool-pwsh</b>
+    <p>PowerShell tool</p>
+  </div>
+  <div class="pkg">
+    <b>shell/tool-pwsh-persistent</b>
+    <p>持久 PowerShell 会话 tool</p>
+  </div>
+</div>
+
+<h2>4. bundle/(可安装叠加层,6 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg">
+    <b>bundle/base</b>
+    <p><b>dsh-base</b> — 共享第一层(模型 / 工具 / 持久化 / 沙箱 / 审批 / 设置 / 凭据 / 遥测)</p>
+  </div>
+  <div class="pkg">
+    <b>bundle/web-app</b>
+    <p><b>dsh-web-app</b> — 浏览器应用</p>
+  </div>
+  <div class="pkg">
+    <b>bundle/headless</b>
+    <p><b>dsh-headless</b> — 一次性 runner(无 server)</p>
+  </div>
+  <div class="pkg">
+    <b>bundle/sdk-app</b>
+    <p><b>dsh-sdk-app</b> — SDK JSON-RPC server</p>
+  </div>
+  <div class="pkg">
+    <b>bundle/acp-app</b>
+    <p><b>dsh-acp-app</b> — 自动化 ACP server</p>
+  </div>
+  <div class="pkg">
+    <b>bundle/sdk-minimal</b>
+    <p><b>dsh-sdk-minimal</b> — <b style="color:var(--warn)">显式例外</b>:一个 bundle 拥有完整显式 SDK 树</p>
+  </div>
+</div>
+
+<h2>5. boot/(启动 glue,2 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg">
+    <b>boot/cmdline</b>
+    <p>dsh CLI argv 解析</p>
+  </div>
+  <div class="pkg">
+    <b>boot/app-boot</b>
+    <p>profile / bundle / patch 加载逻辑</p>
+  </div>
+</div>
+
+<h2>6. api + typert(类型 + 网关,2 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg">
+    <b>api</b>
+    <p>Remote BFF assembly + Typert RPC gateway</p>
+  </div>
+  <div class="pkg">
+    <b>typert</b>
+    <p>类型图生成器 + loader + 运行时注册表</p>
+  </div>
+</div>
+
+<h2>7. 其他能力(20+ 包)</h2>
+
+<div class="pkg-grid">
+  <div class="pkg"><b>e2b</b><p>E2B POC:沙箱 + FS/subprocess 适配</p></div>
+  <div class="pkg"><b>terminal</b><p>持久会话</p></div>
+  <div class="pkg"><b>fs</b><p>filesystem 能力 + policy</p></div>
+  <div class="pkg"><b>lsp</b><p>language-server 能力</p></div>
+  <div class="pkg"><b>skill</b><p>skill provider registry + 本地实现 + 目录 / 加载器 tool</p></div>
+  <div class="pkg"><b>web</b><p>web 能力:Definition + search/fetch provider + tool Consumer</p></div>
+  <div class="pkg"><b>compaction</b><p>compaction 能力 + 基础 provider</p></div>
+  <div class="pkg"><b>context</b><p>request-context plugin</p></div>
+  <div class="pkg"><b>subagent</b><p>subagent 能力:Definition + providers + delegation Consumers</p></div>
+  <div class="pkg"><b>workflow</b><p>workflow 能力 + worker-thread provider + tool Consumer</p></div>
+  <div class="pkg"><b>webhook</b><p>webhook ingress</p></div>
+  <div class="pkg"><b>todo</b><p>todo_write tool</p></div>
+  <div class="pkg"><b>plan</b><p>plan mode as logged state</p></div>
+  <div class="pkg"><b>preset</b><p>per-session agent composition from preset cordis.yml</p></div>
+  <div class="pkg"><b>guard</b><p>loop-hygiene + tool-timeout plugin</p></div>
+  <div class="pkg"><b>self-modification</b><p>the agent inspects/mounts its own plugin</p></div>
+  <div class="pkg"><b>hooks</b><p>Claude Code / Codex hook bridges + wire-protocol lib</p></div>
+  <div class="pkg"><b>session</b><p>durable session data:persistence, projection, titles, telemetry</p></div>
+  <div class="pkg"><b>identity</b><p>anonymous identity</p></div>
+  <div class="pkg"><b>settings</b><p>user-settings 能力 + file provider</p></div>
+  <div class="pkg"><b>credentials</b><p>credential/authorization 能力 + env/.env provider</p></div>
+  <div class="pkg"><b>acp</b><p>automation-only Agent Client Protocol server</p></div>
+  <div class="pkg"><b>interaction</b><p>approval/interaction 能力,permission, commands, ask-user</p></div>
+  <div class="pkg"><b>sdk</b><p>JSON-RPC protocol + TypeScript client/server</p></div>
+  <div class="pkg"><b>experimental</b><p>private prototypes excluded from official releases</p></div>
+  <div class="pkg"><b>support</b><p>dev/test 基础设施</p></div>
+  <div class="pkg"><b>util</b><p>zero-dependency 工具</p></div>
+  <div class="pkg"><b>schedule</b><p>调度(独立成包)</p></div>
+  <div class="pkg"><b>attachment</b><p>附件处理</p></div>
+  <div class="pkg"><b>client</b><p>客户端 SDK</p></div>
+  <div class="pkg"><b>code-runtime</b><p>代码运行时</p></div>
+  <div class="pkg"><b>extensions</b><p>扩展点</p></div>
+  <div class="pkg"><b>feedback</b><p>反馈收集</p></div>
+  <div class="pkg"><b>goal</b><p>目标系统</p></div>
+  <div class="pkg"><b>runtime-diagnostics</b><p>运行时诊断</p></div>
+  <div class="pkg"><b>sandbox</b><p>沙箱基础设施</p></div>
+  <div class="pkg"><b>spill</b><p>溢出 / 持久化</p></div>
+  <div class="pkg"><b>storage</b><p>存储抽象</p></div>
+  <div class="pkg"><b>test-support</b><p>测试支持工具</p></div>
+</div>
+
+<h2>8. python/(Python SDK + 运行时)</h2>
+
+<div class="card">
+  <p>Python SDK + 捆绑的运行时。包含:</p>
+  <ul>
+    <li><code>python/sdk</code> — Python 客户端 SDK</li>
+    <li><code>python/sdk-runtime</code> — 把 <code>dsh --profile sdk</code> 打包成 wheel(<code>deepseek-harness-sdk-runtime-&lt;platform&gt;-&lt;arch&gt;</code>),Python 端通过它启动</li>
+  </ul>
+  <p>Python SDK 走和 TS SDK 同样的 application architecture,只是入口是 Python。</p>
+</div>
+
+<h2>9. native/(原生模块)</h2>
+
+<div class="card">
+  <p><code>native/landlock-run</code> — <code>@deepseek-ai/node-addon-landlock-run</code> 的源,Linux landlock 沙箱的 Node 原生绑定。</p>
+</div>
+
+<h2>10. 不变量摘要(从 <code>AGENTS.md</code> 提取)</h2>
+
+<table>
+  <tr><th>不变量</th><th>出处</th></tr>
+  <tr><td><b>Registrations are effects</b>: <code>ctx.effect()</code> / <code>ctx.on()</code>;<code>register()</code> 返回 disposer</td><td>AGENTS.md L105</td></tr>
+  <tr><td><b>Runtime invariants assert owned relationships</b>: 只在独立观察可分歧时 publish <code>./invariant</code></td><td>AGENTS.md L106</td></tr>
+  <tr><td><b>Typed events use declaration merging</b>: 事件 JSDoc 需要 <code>@mode</code> + payload <code>@param</code></td><td>AGENTS.md L107</td></tr>
+  <tr><td><b>Switch on discriminant tags</b>: 闭合 union 用 <code>assertNever</code></td><td>AGENTS.md L108</td></tr>
+  <tr><td><b>Waterfall listeners MUST call <code>next()</code></b></td><td>AGENTS.md L109</td></tr>
+  <tr><td><b>Model-visible ⟺ logged</b>: 任何到模型请求的内容必须从 log 重建</td><td>AGENTS.md L110</td></tr>
+  <tr><td><b>Plugins, not loop changes</b>: 新行为走扩展点;改 <code>agent-loop</code> 必须更新 <code>docs/architecture.md</code></td><td>AGENTS.md L111</td></tr>
+  <tr><td><b>Capability seam = 3 角色</b>: Definition / Provider / Consumer 缺一不可</td><td>AGENTS.md L112</td></tr>
+</table>
+
+<h2>11. 跨节链接</h2>
+
+<ul>
+  <li>📘 <a href="./00-overview.html">00 总览</a> — 5 抽象速览</li>
+  <li>🔌 <a href="./01-plugin-system.html">01 插件系统</a> — 插件怎么挂</li>
+  <li>🧠 <a href="./02-cordis-harness.html">02 抽象</a> — 5 抽象讲了什么</li>
+  <li>🃏 <a href="./04-study-cards/">04 学习卡片</a> — 练习题</li>
+</ul>
+
+<footer>
+  方法论来源: <code>agents-reverse-engineer</code> per-directory AGENTS.md 风格,52 包分 7 大组列出<br>
+  验证项目: <code>/home/lifenghu/src/deepseek-harness</code>
+</footer>
+
+</div>
+</body>
+</html>

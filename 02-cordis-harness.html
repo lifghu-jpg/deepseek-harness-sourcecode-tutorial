@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DeepSeek Harness 源码教程 — 02 Cordis + 5 抽象</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #1f232c;
+    --border: #2a2f3a; --text: #d6d8de; --muted: #8b91a0;
+    --accent: #89b4fa; --accent2: #a6e3a1; --warn: #f38ba8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.65; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 28px; }
+  h1 { font-size: 30px; color: #fff; margin: 0 0 8px; }
+  h2 { font-size: 22px; color: #fff; margin: 40px 0 12px;
+       border-left: 4px solid var(--accent); padding-left: 12px; }
+  h3 { font-size: 17px; color: var(--accent); margin: 24px 0 8px; }
+  h4 { font-size: 15px; color: var(--accent2); margin: 16px 0 6px; }
+  p, li { font-size: 15px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 0; }
+  .nav a { background: var(--panel2); border: 1px solid var(--border);
+           color: var(--text); padding: 6px 14px; border-radius: 6px;
+           text-decoration: none; font-size: 13px; }
+  .nav a.current { background: var(--accent); color: #1e1e2e; border-color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 8px; padding: 18px 22px; margin: 14px 0; }
+  .abstract { background: var(--panel); border-left: 4px solid var(--accent);
+              padding: 16px 20px; border-radius: 0 6px 6px 0; margin: 16px 0; }
+  .abstract h3 { margin-top: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 14px; margin: 14px 0; }
+  pre { background: #1a1d24; border: 1px solid var(--border); border-radius: 6px;
+        padding: 12px 16px; overflow-x: auto; font-size: 13px;
+        font-family: "JetBrains Mono",Consolas,monospace; }
+  code { background: #1a1d24; padding: 2px 6px; border-radius: 3px;
+         font-family: "JetBrains Mono",Consolas,monospace; font-size: 13px; }
+  pre code { background: transparent; padding: 0; }
+  .callout { background: #2a2030; border-left: 3px solid var(--warn);
+             padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 16px 0; }
+  .callout.tip { background: #1f2a24; border-left-color: var(--accent2); }
+  .mermaid { background: #fff; border-radius: 6px; padding: 16px; margin: 16px 0; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  th { background: var(--panel2); color: var(--accent); }
+  td { background: var(--panel); }
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border);
+           color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>🧠 02 — Cordis 框架 + 5 个核心抽象</h1>
+  <p class="meta">视角: 抽象级讲解(PocketFlow 风格 5-N 抽象识别 + 关系图)</p>
+  <nav class="nav">
+    <a href="./00-overview.html">00 总览</a>
+    <a href="./01-plugin-system.html">01 插件</a>
+    <a class="current">02 抽象</a>
+    <a href="./03-package-tour.html">03 包巡礼</a>
+    <a href="./04-study-cards/">04 卡片</a>
+  </nav>
+</header>
+
+<div class="callout tip">
+  <b>本节目标</b>: 把"52 packages 的 monorepo"压成 5 个核心抽象,理解它们怎么协作。每个抽象都按 PocketFlow 模板: <code>name + description + file_indices</code>。
+</div>
+
+<h2>1. 关系图(5 抽象 + 协作)</h2>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/02-cordis-harness-01.svg" alt="mermaid diagram 1" />
+</div>
+
+<h2>2. 抽象 1:Cordis Plugin Tree</h2>
+
+<div class="abstract">
+  <h3>🎯 名称:Cordis Plugin Tree</h3>
+  <p><b>类比</b>: 像 Spring 的 <code>ApplicationContext</code>,但一切都是 effect——可逆、可回滚。</p>
+  <p><b>描述(100 词)</b>: Cordis 是 Koishi / Satori 生态的轻量级 IoC 容器,在 DeepSeek Harness 中作为底层运行时。每个 plugin 挂载时注册 service、event、effect 到 <code>ctx</code>。卸载时所有 effect 自动反向,资源自动释放。Plugin tree 支持 fork / merge,允许"spacetime composability"——按时间和空间维度组合。Cordis 不是 dsh 的一部分,而是 vendored(<code>vendor/cordis/</code>)后重新作用域化为 <code>@deepseek-ai/cordis</code>。所有 dsh 包把它作为 peerDependency。</p>
+  <p><b>关键文件</b>:
+    <code>vendor/cordis/</code>,<code>docs/cordis-primer.md</code>,<code>docs/cordis-tutorial/</code>
+  </p>
+  <p><b>ctx 键</b>: 无(plugin tree 本身)</p>
+</div>
+
+<h3>核心 API(看 <code>docs/cordis-primer.md</code> 入门)</h3>
+
+<pre><code>// 1. 注册 service
+ctx.effect(() => {
+  const service = createSomething();
+  ctx.set('myService', service);  // ctx.myService 可用
+  return () => service.dispose();  // 卸载时自动调用
+});
+
+// 2. 监听 event
+ctx.on('session/event', (event) => {
+  console.log('Got event:', event);
+});
+
+// 3. Waterfall listener(必须调 next)
+ctx.on('agent/pre-step', async (decision, next) => {
+  if (decision.messages.length === 0) {
+    return { ...decision, rejected: true };  // 拒绝这一轮
+  }
+  return await next(decision);  // 委托下一棒
+});</code></pre>
+
+<h2>3. 抽象 2:Session(会话)</h2>
+
+<div class="abstract">
+  <h3>🎯 名称:Session Event Log</h3>
+  <p><b>类比</b>: 像数据库的 WAL(Write-Ahead Log),append-only 不可变。</p>
+  <p><b>描述</b>: Session 是 dsh 的"事实之源"。所有 <code>SessionEvent</code>(<code>user/message</code>、<code>assistant/*</code>、<code>tool/*</code>、<code>turn/*</code>、<code>step/*</code>)都被 append 到 session log,既是 <b>内存查询</b>的源,也是 <b>模型重放</b>的源。SQLite 后端,schema version 单调,旧格式直接拒收(不写兼容层)。这保证了"<b>Model-visible ⟺ logged</b>"不变量——任何到达模型请求的内容都能从 log 重建。</p>
+  <p><b>关键文件</b>:
+    <code>packages/core/session/src/index.ts</code>,
+    <code>packages/core/session/src/store.ts</code>,
+    <code>packages/core/session/src/project.ts</code>
+  </p>
+  <p><b>ctx 键</b>: <code>ctx.sessions</code></p>
+</div>
+
+<h3>关键事件类型(摘自 <code>docs/architecture.md</code>)</h3>
+
+<table>
+  <tr><th>事件域</th><th>例子</th><th>何时用</th></tr>
+  <tr><td>Session</td><td><code>session/event</code> + 各种 <code>SessionEvent</code></td><td>事实需跨 reload 保留</td></tr>
+  <tr><td>Agent</td><td><code>agent/inbox</code>、<code>agent/step</code>、<code>agent/request</code></td><td>观察 / 拦截 in-flight 工作</td></tr>
+  <tr><td>Capability</td><td><code>fs/*</code>、<code>tools/*</code>、<code>telemetry/*</code></td><td>不 import loop 也能附加 policy / adapter</td></tr>
+</table>
+
+<h2>4. 抽象 3:Agent Loop(智能体循环)</h2>
+
+<div class="abstract">
+  <h3>🎯 名称:Agent / Agent Loop</h3>
+  <p><b>类比</b>: 像 React 的 render loop——每 step 重新组装 prompt + 调 LLM + 跑工具,但驱动是 <b>event-driven</b> 而不是 <b>callback-based</b>。</p>
+  <p><b>描述</b>: Agent 是 <code>Agent</code> interface 的实现,由 <code>core/agent</code> 定义,默认驱动由 <code>core/agent-loop</code> 实现。一个 turn = 0 或多个 step;一个 step = 1 次模型请求 + 它调用的所有 tool。每步通过 <code>agent/pre-step</code> 决定要喂给模型的输入,通过 <code>agent/request</code> 发起模型调用,通过 <code>tools/pre-execute</code> 守卫工具执行,通过 <code>tools/execute</code> 实际执行,通过 <code>agent/turn-stopping</code> 决定是否结束 turn。所有这些都是 <b>waterfall listener</b>(必须调 <code>next()</code>)或 <b>serial listener</b>(无 <code>next()</code>)。</p>
+  <p><b>关键文件</b>:
+    <code>packages/core/agent/</code>,
+    <code>packages/core/agent-loop/</code>,
+    <code>docs/agent-lifecycle.md</code>,
+    <code>docs/subsystems/core.md</code>
+  </p>
+  <p><b>ctx 键</b>: <code>ctx.agents</code>(注册表)+ <code>ctx.agentLoop</code>(默认驱动)</p>
+</div>
+
+<h3>Turn Flow 时序(摘自 <code>docs/architecture.md</code>)</h3>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/02-cordis-harness-02.svg" alt="Turn flow sequence diagram: inbox to pre-step to loop to model to tools, with waterfall listeners and serial turn-stopping" />
+</div>
+
+<h2>5. 抽象 4:Capability Seam(能力接缝)</h2>
+
+<div class="abstract">
+  <h3>🎯 名称:Capability Seam(3-角色模式)</h3>
+  <p><b>类比</b>: 像 Java SPI 或 OSGi service layer——但每个 seam 必是完整的"三角色",缺一不可。</p>
+  <p><b>描述</b>: DeepSeek Harness 的所有能力(LLM / Shell / FS / Web / Subagent / Compaction / Workflow)都遵循同一个模式——一个 seam 必包含 3 角色:<b>Service Definition</b>(接口契约)、<b>Service Provider</b>(具体实现,可插拔多个)、<b>Consumer</b>(使用方,通常是 tool)。Seam 完整才是合法的;只有一两个角色 = 不完整。这强制了"<b>扩展点而非循环改动</b>"的哲学——加新能力 = 加新 seam;改旧能力 = 改 Provider,不动 Definition。</p>
+  <p><b>真实例子</b>:
+    <ul>
+      <li><code>llm/llm</code>(Definition)+ <code>llm-deepseek</code> / <code>llm-pi-ai</code>(Provider)+ <code>core/tools</code>(Consumer)</li>
+      <li><code>shell/shell</code>(Definition)+ <code>bash-local</code> / <code>bash-sandbox</code> / <code>pwsh-local</code>(Provider)+ <code>tool-bash</code> / <code>tool-bash-persistent</code>(Consumer)</li>
+      <li><code>web/web</code>(Definition)+ <code>web-search</code> / <code>web-fetch</code>(Provider)+ tool Consumer</li>
+    </ul>
+  </p>
+  <p><b>关键文件</b>: <code>docs/capability-seams.md</code>(专门定义),<code>docs/glossary.md#capability-seam</code></p>
+</div>
+
+<h3>Seam 图示</h3>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/02-cordis-harness-03.svg" alt="mermaid diagram 3" />
+</div>
+
+<h2>6. 抽象 5:Profile + Bundle(配置叠加层)</h2>
+
+<div class="abstract">
+  <h3>🎯 名称:Profile + Bundle(配置叠加层)</h3>
+  <p><b>类比</b>: 像 Docker 的多层镜像——bundle 是层,profile 是组合。</p>
+  <p><b>描述</b>: 一个运行的 dsh = 启动时由若干层叠加而成的 plugin tree。<b>Profile</b>是命名组合,存储在 Harness home,列出它堆叠的 bundles + 用户的 <code>cordis.patch.yml</code>。<b>Bundle</b>是 Cordis config rows 的发行格式 + 它们 mount 的代码。叠加顺序固定:profile.bundles[i] → profile.patch.yml → home.patch.yml → --patch overlay。Live patch reload 用于 web profile;headless/sdk/sdk-minimal/acp 在启动时只应用一次(替换运行时依赖会作废一次性应用的生命周期)。</p>
+  <p><b>关键文件</b>:
+    <code>packages/bundle/</code>(base/web-app/headless/sdk-app/acp-app/sdk-minimal),
+    <code>packages/boot/app-boot/</code>,
+    <code>docs/architecture.md#profiles-and-bundles</code>
+  </p>
+  <p><b>ctx 键</b>: 无(boot-time 配置)</p>
+</div>
+
+<h3>Profile vs Bundle 对比表</h3>
+
+<table>
+  <tr><th>维度</th><th>Profile</th><th>Bundle</th></tr>
+  <tr><td>是什么</td><td>命名组合</td><td>config rows + 代码</td></tr>
+  <tr><td>存在哪里</td><td>Harness home(用户级)</td><td>npm 包(代码级)</td></tr>
+  <tr><td>声明字段</td><td><code>dsh.profile</code>(列 bundles)</td><td><code>dsh.bundle</code>(指 patch file)</td></tr>
+  <tr><td>可被 patch 吗</td><td>是(<code>cordis.patch.yml</code>)</td><td>是(上层 bundle 或 patch)</td></tr>
+  <tr><td>例子</td><td>web、headless、sdk、acp</td><td>dsh-base、dsh-web-app</td></tr>
+</table>
+
+<h2>7. 抽象间关系矩阵(PocketFlow AnalyzeRelationships 输出)</h2>
+
+<table>
+  <tr><th>From</th><th>To</th><th>Label</th></tr>
+  <tr><td>Cordis</td><td>Session</td><td>owns(挂载)</td></tr>
+  <tr><td>Cordis</td><td>Agent</td><td>owns(挂载)</td></tr>
+  <tr><td>Cordis</td><td>Seam</td><td>owns(挂载)</td></tr>
+  <tr><td>Profile</td><td>Cordis</td><td>mounts on(启动时叠加)</td></tr>
+  <tr><td>Agent</td><td>Session</td><td>persists events to</td></tr>
+  <tr><td>Agent</td><td>Seam</td><td>invokes capability via</td></tr>
+  <tr><td>Seam</td><td>External</td><td>calls out to(LLM API / Shell / FS)</td></tr>
+  <tr><td>Session</td><td>Agent</td><td>replays on reload(冷启动恢复)</td></tr>
+</table>
+
+<p><b>不变量</b>: 5 个抽象都参与至少 1 个关系(PocketFlow 要求)。</p>
+
+<h2>8. 跨节链接</h2>
+
+<ul>
+  <li>📘 <a href="./00-overview.html">00 总览</a> — 全局视角 + 5 抽象速览</li>
+  <li>🔌 <a href="./01-plugin-system.html">01 插件系统</a> — Profile / Bundle / Cordis 怎么落地</li>
+  <li>📦 <a href="./03-package-tour.html">03 52 包巡礼</a> — 每个抽象由哪些包实现</li>
+  <li>🃏 <a href="./04-study-cards/">04 学习卡片</a> — 5 抽象对应的练习题</li>
+</ul>
+
+<footer>
+  方法论来源: <code>PocketFlow-Codebase-Knowledge</code> 3 阶段流水线(IdentifyAbstractions → AnalyzeRelationships → OrderChapters)<br>
+  每个抽象 = <code>name + description + file_indices</code> 三元组
+</footer>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DeepSeek Harness 源码教程 — 01 插件系统</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #1f232c;
+    --border: #2a2f3a; --text: #d6d8de; --muted: #8b91a0;
+    --accent: #89b4fa; --accent2: #a6e3a1; --warn: #f38ba8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.65; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 28px; }
+  h1 { font-size: 30px; color: #fff; margin: 0 0 8px; }
+  h2 { font-size: 22px; color: #fff; margin: 40px 0 12px;
+       border-left: 4px solid var(--accent); padding-left: 12px; }
+  h3 { font-size: 17px; color: var(--accent); margin: 24px 0 8px; }
+  h4 { font-size: 15px; color: var(--accent2); margin: 16px 0 6px; }
+  p, li { font-size: 15px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 0; }
+  .nav a { background: var(--panel2); border: 1px solid var(--border);
+           color: var(--text); padding: 6px 14px; border-radius: 6px;
+           text-decoration: none; font-size: 13px; }
+  .nav a.current { background: var(--accent); color: #1e1e2e; border-color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 8px; padding: 18px 22px; margin: 14px 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 14px; margin: 14px 0; }
+  .pkg { background: var(--panel); border: 1px solid var(--border);
+         border-radius: 6px; padding: 12px 16px; font-size: 13px; }
+  .pkg b { color: var(--accent2); }
+  .pkg small { color: var(--muted); display: block; margin-top: 4px; }
+  pre { background: #1a1d24; border: 1px solid var(--border); border-radius: 6px;
+        padding: 12px 16px; overflow-x: auto; font-size: 13px;
+        font-family: "JetBrains Mono",Consolas,monospace; }
+  code { background: #1a1d24; padding: 2px 6px; border-radius: 3px;
+         font-family: "JetBrains Mono",Consolas,monospace; font-size: 13px; }
+  pre code { background: transparent; padding: 0; }
+  .callout { background: #2a2030; border-left: 3px solid var(--warn);
+             padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 16px 0; }
+  .callout.tip { background: #1f2a24; border-left-color: var(--accent2); }
+  .mermaid { background: #fff; border-radius: 6px; padding: 16px; margin: 16px 0; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  th { background: var(--panel2); color: var(--accent); }
+  td { background: var(--panel); }
+  .tree { background: #1a1d24; padding: 12px 16px; border-radius: 6px;
+          font-family: "JetBrains Mono",Consolas,monospace; font-size: 13px;
+          white-space: pre; }
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border);
+           color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>🔌 01 — 插件系统(递归下钻)</h1>
+  <p class="meta">视角: <code>extension-points</code>(oh-my-mermaid 12 perspective 之一)· 项目级</p>
+  <nav class="nav">
+    <a href="./00-overview.html">00 总览</a>
+    <a class="current">01 插件系统</a>
+    <a href="./02-cordis-harness.html">02 Cordis</a>
+    <a href="./03-package-tour.html">03 包巡礼</a>
+    <a href="./04-study-cards/">04 卡片</a>
+  </nav>
+</header>
+
+<div class="callout tip">
+  <b>本节目标</b>: 理解 DeepSeek Harness 的"everything-is-a-plugin"是怎么落地的——从 Cordis 框架到 profile/bundle/CLI 的完整递归栈。
+</div>
+
+<h2>1. 顶层:Mermaid 总览</h2>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/01-plugin-system-01.svg" alt="mermaid diagram 1" />
+</div>
+
+<h2>2. 关键递归元素(oh-my-mermaid style)</h2>
+
+<h3>2.1 CLI 层(<code>packages/boot/cmdline/</code>)</h3>
+
+<div class="card">
+  <b>Description</b>: 解析 <code>dsh web / --profile headless "task" / --dump-config</code> 等参数,转发到 Profile Loader。<br>
+  <b>ctx 键</b>: 无(启动入口)<br>
+  <b>关键文件</b>:
+  <ul>
+    <li><code>packages/boot/cmdline/src/index.ts</code> — argv 解析</li>
+    <li><code>packages/boot/cmdline/src/profile.ts</code> — profile 选择</li>
+  </ul>
+  <b>Status</b>: <b style="color:var(--accent2)">leaf</b>(单文件,无内部子结构)
+</div>
+
+<h3>2.2 Profile Loader(<code>packages/boot/app-boot/</code>)</h3>
+
+<div class="card">
+  <b>Description</b>: 读取 profile 配置 → 决定加载哪些 bundle → 按顺序叠加 → 构造 Cordis 上下文。<br>
+  <b>ctx 键</b>: 无(boot glue)<br>
+  <b>关键文件</b>:
+  <ul>
+    <li><code>packages/boot/app-boot/src/profile.ts</code> — profile 选择 + bundle list 解析</li>
+    <li><code>packages/boot/app-boot/src/bundle.ts</code> — bundle 加载 + 叠加</li>
+    <li><code>packages/boot/app-boot/src/patch.ts</code> — cordis patch.yml 解析</li>
+  </ul>
+  <b>Status</b>: <b style="color:var(--warn)">group</b>(包含 profile / bundle / patch 三个子模块)
+</div>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/01-plugin-system-02.svg" alt="mermaid diagram 2" />
+</div>
+
+<h3>2.3 Bundle 层(<code>packages/bundle/</code>)</h3>
+
+<div class="card">
+  <b>Description</b>: "Bundle" 是 Cordis config rows 的发行格式 + 它们 mount 的代码。bundle 之间可叠加,上层 patch 下层。<br>
+  <b>ctx 键</b>: 无(只是 mount 入口)<br>
+  <b>关键文件</b>:
+  <ul>
+    <li><code>packages/bundle/base/</code> — <b>共享第一层</b>(model adapter / tools / persistence / sandbox / approval / settings / credentials / telemetry),web/headless/sdk/acp 四个 profile 都叠这个</li>
+    <li><code>packages/bundle/web-app/</code> — 浏览器应用</li>
+    <li><code>packages/bundle/headless/</code> — 一次性 runner,无 server</li>
+    <li><code>packages/bundle/sdk-app/</code> — SDK JSON-RPC server</li>
+    <li><code>packages/bundle/acp-app/</code> — ACP automation server</li>
+    <li><code>packages/bundle/sdk-minimal/</code> — <b>显式例外</b>:一个 bundle 拥有完整显式 SDK 树,不应用 dsh-base</li>
+  </ul>
+  <b>Status</b>: <b style="color:var(--warn)">group</b>(6 个 bundle)
+</div>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/01-plugin-system-03.svg" alt="mermaid diagram 3" />
+</div>
+
+<div class="callout">
+  <b>⚠️ 不变量</b>:<code>dsh-sdk-minimal</code> 故意不叠 <code>dsh-base</code>。它是一个完整的显式 SDK 树,而不是基于共享第一层。改 <code>dsh-base</code> 时要小心,可能影响 4 个 profile。
+</div>
+
+<h3>2.4 叠加顺序(Layer Order)</h3>
+
+<p><b>从下到上,按这个顺序</b>:</p>
+
+<div class="tree">层 1: profile.bundles[i]   (按 profile 列表顺序)
+层 2: profile.cordis.patch.yml
+层 3: home cordis.patch.yml (用户 home 下的)
+层 4: --patch overlay       (命令行传入)
+</div>
+
+<p>每层都能 <b>替换</b> 上一层的某一行(按 id 匹配),或 <b>插入</b> 新行。完整树形见 <code>dsh --profile web --dump-config</code>。</p>
+
+<h3>2.5 Cordis Plugin Tree(<code>@deepseek-ai/cordis</code>)</h3>
+
+<div class="card">
+  <b>Description</b>: 实际承载所有 plugin 的运行时。每个 plugin 挂上去就注册 service / event / effect,卸载时 effect 反向,资源自动释放。<br>
+  <b>ctx 键</b>: 无(运行时本身)<br>
+  <b>关键特性</b>:
+  <ul>
+    <li><b>Registrations are effects</b>: <code>ctx.effect()</code> / <code>ctx.on()</code> 返回 disposer</li>
+    <li><b>Spacetime composability</b>: paper 描述,组合时可指定时间 / 空间范围</li>
+    <li><b>Plugin unload = 自动反向</b>: 不需要手动清理</li>
+  </ul>
+  <b>关键文件</b>:
+  <ul>
+    <li><code>vendor/cordis/</code> — vendored source</li>
+    <li><code>docs/cordis-primer.md</code> — 入门</li>
+  </ul>
+  <b>Status</b>: <b style="color:var(--warn)">group</b>(framework)
+</div>
+
+<h3>2.6 任何 plugin(典型例子)</h3>
+
+<div class="card">
+  <b>Description</b>: 一个具体的 plugin 例子——<code>core/session</code>。<br>
+  <b>ctx 键</b>: <code>ctx.sessions</code><br>
+  <b>关键文件</b>:
+  <ul>
+    <li><code>packages/core/session/src/index.ts</code> — exports + registrations</li>
+    <li><code>packages/core/session/src/store.ts</code> — SQLite store</li>
+    <li><code>packages/core/session/src/project.ts</code> — 内存投影</li>
+  </ul>
+  <b>Status</b>: <b style="color:var(--accent2)">leaf</b>(3 个文件)
+</div>
+
+<h2>3. 关键设计决策(为什么这么干)</h2>
+
+<table>
+  <tr><th>决策</th><th>理由</th></tr>
+  <tr>
+    <td>Profile = bundle 列表 + patch.yml</td>
+    <td>配置可移植——一个 profile 描述完所有 mount 顺序</td>
+  </tr>
+  <tr>
+    <td>Bundle 是"配置行 + 代码"</td>
+    <td>上层 bundle 可 patch 下层 bundle 的任意配置行</td>
+  </tr>
+  <tr>
+    <td>Live patch reload(<code>web</code> profile)</td>
+    <td>开发时改 patch 不需要重启</td>
+  </tr>
+  <tr>
+    <td>One-shot profiles(<code>headless</code> / <code>sdk</code>)启动时只应用一次</td>
+    <td>替换一次性应用的依赖会作废生命周期</td>
+  </tr>
+  <tr>
+    <td>所有 npm 包 = <code>@deepseek-ai/dsh-&lt;name&gt;</code></td>
+    <td>统一作用域,vendored 重新作用域化,<code>private: true</code></td>
+  </tr>
+  <tr>
+    <td><code>@deepseek-ai/cordis</code> 是所有包的 peerDependency</td>
+    <td>避免重复安装,所有 plugin 共享同一份 Cordis</td>
+  </tr>
+</table>
+
+<h2>4. 怎么"看"自己启动的插件树</h2>
+
+<pre><code>$ dsh --profile web --dump-config
+# 打印完整的 Cordis config 树
+# 每行可以被 patch.yml 替换</code></pre>
+
+<p>或者用开发模式:</p>
+
+<pre><code>$ dsh --profile web --dev
+# 启用 live reload + 详细日志</code></pre>
+
+<h2>5. 怎么写自己的 plugin(贡献者指南摘要)</h2>
+
+<div class="callout tip">
+  <b>5 个规则</b>(<code>AGENTS.md</code> 第 105-120 行):
+</div>
+
+<ol>
+  <li><b>Registrations are effects</b>: 一切注册走 <code>ctx.effect()</code> / <code>ctx.on()</code>;<code>register()</code> 返回 disposer</li>
+  <li><b>Runtime invariants assert owned relationships</b>: 只在"独立观察会分歧"时 publish <code>./invariant</code></li>
+  <li><b>Typed events use declaration merging</b>: 事件 JSDoc 需要 <code>@mode</code> + payload <code>@param</code></li>
+  <li><b>Switch on discriminant tags</b>: 闭合 union 用 <code>assertNever</code>;merge-extensible union 有文档化 default</li>
+  <li><b>Waterfall listeners MUST call <code>next()</code></b>: 不调 = 短路整条链</li>
+</ol>
+
+<h2>6. 跨节链接</h2>
+
+<ul>
+  <li>🔍 <a href="./00-overview.html">00 总览</a> — 全局视角</li>
+  <li>🧠 <a href="./02-cordis-harness.html">02 Cordis + 5 抽象</a> — 抽象级讲解</li>
+  <li>📦 <a href="./03-package-tour.html">03 52 包巡礼</a> — 每个包负责什么</li>
+  <li>🃏 <a href="./04-study-cards/">04 学习卡片</a> — Obsidian 练习题</li>
+</ul>
+
+<footer>
+  视角来源: <code>oh-my-mermaid</code> 12-perspective 中的 <code>extension-points</code> + 递归下钻 + 7 字段模板<br>
+  项目路径: <code>/home/lifenghu/src/deepseek-harness/packages/{boot,bundle,core}/</code>
+</footer>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek Harness 源码教程 — 00 总览</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --panel2: #1f232c;
+    --border: #2a2f3a;
+    --text: #d6d8de;
+    --muted: #8b91a0;
+    --accent: #89b4fa;
+    --accent2: #a6e3a1;
+    --warn: #f38ba8;
+    --code: #1a1d24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.65;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 28px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 32px; }
+  h1 { font-size: 32px; margin: 0 0 8px; color: #fff; }
+  h2 { font-size: 22px; color: #fff; margin: 40px 0 12px;
+       border-left: 4px solid var(--accent); padding-left: 12px; }
+  h3 { font-size: 17px; color: var(--accent); margin: 24px 0 8px; }
+  h4 { font-size: 15px; color: var(--accent2); margin: 16px 0 6px; }
+  p, li { font-size: 15px; color: var(--text); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .toc { background: var(--panel); border: 1px solid var(--border);
+         border-radius: 8px; padding: 16px 24px; margin: 20px 0 32px; }
+  .toc h3 { margin-top: 0; color: var(--accent); }
+  .toc ol { margin: 8px 0; padding-left: 20px; }
+  .toc a { color: var(--text); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 0; }
+  .nav a { background: var(--panel2); border: 1px solid var(--border);
+           color: var(--text); padding: 6px 14px; border-radius: 6px;
+           text-decoration: none; font-size: 13px; }
+  .nav a.current { background: var(--accent); color: #1e1e2e; border-color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 8px; padding: 18px 22px; margin: 14px 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 14px; margin: 14px 0; }
+  .pkg { background: var(--panel); border: 1px solid var(--border);
+         border-radius: 6px; padding: 12px 16px; font-size: 13px; }
+  .pkg b { color: var(--accent2); }
+  .pkg small { color: var(--muted); display: block; margin-top: 2px; }
+  pre { background: var(--code); border: 1px solid var(--border); border-radius: 6px;
+        padding: 12px 16px; overflow-x: auto; font-size: 13px;
+        font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; }
+  code { background: var(--code); padding: 2px 6px; border-radius: 3px;
+         font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px; }
+  pre code { background: transparent; padding: 0; }
+  .callout { background: #2a2030; border-left: 3px solid var(--warn);
+             padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 16px 0; }
+  .callout.tip { background: #1f2a24; border-left-color: var(--accent2); }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  th { background: var(--panel2); color: var(--accent); }
+  td { background: var(--panel); }
+  .mermaid { background: #fff; border-radius: 6px; padding: 16px; margin: 16px 0; text-align: center; }
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border);
+           color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>📘 DeepSeek Harness 源码教程</h1>
+  <p class="meta">00 — 总览:多视角架构图 + 入口指南</p>
+  <p class="meta">项目: <code>deepseek-ai/deepseek-harness</code> · v1.0.4 · 52 packages · TypeScript + Cordis plugin</p>
+  <nav class="nav">
+    <a class="current">00 总览</a>
+    <a href="./01-plugin-system.html">01 插件系统</a>
+    <a href="./02-cordis-harness.html">02 Cordis Harness</a>
+    <a href="./03-package-tour.html">03 52 包巡礼</a>
+    <a href="./04-study-cards/">04 学习卡片</a>
+  </nav>
+</header>
+
+<div class="toc">
+  <h3>本节导览</h3>
+  <ol>
+    <li><a href="#what">DeepSeek Harness 是什么</a></li>
+    <li><a href="#why">为什么"全插件"架构</a></li>
+    <li><a href="#perspectives">多视角架构图(oh-my-mermaid 12 perspective)</a></li>
+    <li><a href="#overview-mermaid">总览 Mermaid 图</a></li>
+    <li><a href="#entry">从哪里开始读</a></li>
+    <li><a href="#abstractions">5 个核心抽象(PocketFlow 风格)</a></li>
+    <li><a href="#how-to-read">推荐阅读路线</a></li>
+  </ol>
+</div>
+
+<h2 id="what">📦 DeepSeek Harness 是什么</h2>
+
+<p><b>DeepSeek Harness(<code>dsh</code>)</b>是 DeepSeek AI 开源的 <b>agent harness(智能体驱动框架)</b>——一个让 AI agent 跑起来、记住对话、调用工具、执行命令的完整运行时。</p>
+
+<p>它不是单一应用,而是一个 <b>monorepo 工具箱</b>:</p>
+
+<ul>
+  <li>🖥️ <b>Web UI</b>(<code>dsh web</code>)— 浏览器里对话的界面,默认 <code>http://127.0.0.1:3080</code></li>
+  <li>🤖 <b>Headless runner</b>(<code>dsh --profile headless "task"</code>)— 跑一次性任务</li>
+  <li>📡 <b>SDK server</b>(<code>dsh --profile sdk</code>)— JSON-RPC 远程调用</li>
+  <li>🔌 <b>ACP server</b>(<code>dsh --profile acp</code>)— Agent Client Protocol 自动化接口</li>
+  <li>🧰 <b>SDK 最小版</b>(<code>dsh --profile sdk-minimal</code>)— 显式 SDK 树,无 <code>dsh-base</code> 叠加</li>
+</ul>
+
+<h2 id="why">🧬 为什么"全插件"架构</h2>
+
+<div class="card">
+  <p><b>核心哲学</b>:<i>"There is no privileged core to patch: you extend dsh by mounting a plugin beside the others, and registrations are effects that unwind when their plugin unloads."</i>(<code>docs/architecture.md</code>)</p>
+</div>
+
+<p>整个系统由 <b>Cordis 框架</b>驱动——一个轻量级 IoC 容器,灵感来自 Koishi / Satori 生态(<a href="https://github.com/cordiverse/cordis">cordiverse/cordis</a>,论文 <i>A Programming Paradigm for Spatiotemporal Composability</i> arXiv 2608.25512)。</p>
+
+<table>
+  <tr><th>传统框架</th><th>DeepSeek Harness (Cordis 全插件)</th></tr>
+  <tr><td>核心模块改不动,只能"扩展"</td><td>核心也是插件,你能直接 patch / 替换</td></tr>
+  <tr><td>注册 = 静态配置</td><td>注册 = effect(可逆、可回滚)</td></tr>
+  <tr><td>配置热重载 = 复杂</td><td>插件卸载时 effect 自动反向</td></tr>
+  <tr><td>"我能不能动这一行?"</td><td>"我能不能把这一行换成我的 plugin?"</td></tr>
+</table>
+
+<h2 id="perspectives">🎯 多视角架构图</h2>
+
+<p>用 <b>oh-my-mermaid</b> 的 12 个 perspective 划分,以下 4 个对 DeepSeek Harness 最关键:</p>
+
+<div class="grid">
+  <div class="pkg">
+    <b>overall-architecture</b>
+    <small>必选,展示 packages/ 顶层 + 启动入口</small>
+  </div>
+  <div class="pkg">
+    <b>extension-points</b>
+    <small>plugin / bundle / profile 怎么注册和叠加</small>
+  </div>
+  <div class="pkg">
+    <b>request-lifecycle</b>
+    <small>一次 turn / step / tool-call 的完整路径</small>
+  </div>
+  <div class="pkg">
+    <b>orchestration</b>
+    <small>event-driven:session/event / agent/* / tools/*</small>
+  </div>
+</div>
+
+<h2 id="overview-mermaid">📊 总览 Mermaid 图</h2>
+
+<div class="mermaid">
+<img class="mermaid-svg" src="assets/00-overview-01.svg" alt="mermaid diagram 1" />
+</div>
+
+<h2 id="entry">🚪 从哪里开始读</h2>
+
+<p>按贡献者自己的推荐路径:</p>
+
+<table>
+  <tr><th>顺序</th><th>文件 / 目录</th><th>内容</th></tr>
+  <tr><td>1</td><td><code>README.md</code></td><td>10 分钟搞清这是什么、怎么跑</td></tr>
+  <tr><td>2</td><td><code>AGENTS.md</code>(19KB)</td><td>仓库约定 + 52 packages 分组表 + 命令清单</td></tr>
+  <tr><td>3</td><td><code>docs/architecture.md</code></td><td>Cordis / profile / bundle / 核心包设计(<b>改 packages/ 必读</b>)</td></tr>
+  <tr><td>4</td><td><code>docs/cordis-primer.md</code></td><td>Cordis 框架入门(不懂 Cordis 必读)</td></tr>
+  <tr><td>5</td><td><code>docs/glossary.md</code></td><td>术语表(capability seam / effect / waterfall)</td></tr>
+  <tr><td>6</td><td><code>docs/AGENTS.md</code></td><td>如何写文档(给贡献者)</td></tr>
+</table>
+
+<h2 id="abstractions">🧠 5 个核心抽象(PocketFlow 风格)</h2>
+
+<p>用 PocketFlow-Codebase-Knowledge 的方法论,识别出本项目 5 个最核心抽象。每个抽象独立成节,放完整描述 + 关键文件 + 在 <code>ctx.*</code> 里的键名。</p>
+
+<div class="card">
+  <h3>抽象 1 — Cordis Plugin Tree(插件树)</h3>
+  <p><b>类比</b>: 像 Spring 的 <code>ApplicationContext</code>,但一切都是 effect。</p>
+  <p><b>职责</b>: 挂载 / 卸载 plugin;管理 ctx 上的服务注册;支持 fork / merge。</p>
+  <p><b>关键文件</b>: <code>vendor/cordis/</code>(<code>@deepseek-ai/cordis</code> 重新作用域化),<code>docs/cordis-primer.md</code></p>
+  <p><b>ctx 键</b>: 无(plugin tree 本身)</p>
+</div>
+
+<div class="card">
+  <h3>抽象 2 — Session(会话)</h3>
+  <p><b>类比</b>: 像数据库的 WAL(Write-Ahead Log),append-only 不可变。</p>
+  <p><b>职责</b>: 持久化所有 <code>SessionEvent</code>;提供内存查询 / 投影。</p>
+  <p><b>关键文件</b>: <code>packages/core/session/src/</code></p>
+  <p><b>ctx 键</b>: <code>ctx.sessions</code></p>
+  <p><b>不变量</b>: <code>SCHEMA_VERSION</code> monotonic;老格式直接拒收。</p>
+</div>
+
+<div class="card">
+  <h3>抽象 3 — Agent Loop(智能体循环)</h3>
+  <p><b>类比</b>: 像 React 的 render loop——每次 step 重新组装 prompt + 调 LLM + 跑工具。</p>
+  <p><b>职责</b>: 实现 <code>Agent</code> interface;管理 turn / step / tool-call 状态机。</p>
+  <p><b>关键文件</b>: <code>packages/core/agent/</code>,<code>packages/core/agent-loop/</code></p>
+  <p><b>ctx 键</b>: <code>ctx.agents</code> / <code>ctx.agentLoop</code></p>
+</div>
+
+<div class="card">
+  <h3>抽象 4 — Capability Seam(能力接缝)</h3>
+  <p><b>类比</b>: 像 Java SPI 或 OSGi 的 service layer——但每个 seam 必是完整的"三角色":</p>
+  <ul>
+    <li><b>Service Definition</b> — 接口契约</li>
+    <li><b>Service Provider</b> — 具体实现(可插拔)</li>
+    <li><b>Consumer</b> — 使用方(通常是 tool)</li>
+  </ul>
+  <p><b>关键例子</b>: <code>shell/</code>、<code>llm/</code>、<code>web/</code>、<code>subagent/</code>、<code>compaction/</code>、<code>workflow/</code></p>
+  <p><b>文档</b>: <code>docs/capability-seams.md</code></p>
+</div>
+
+<div class="card">
+  <h3>抽象 5 — Profile + Bundle(配置叠加层)</h3>
+  <p><b>类比</b>: 像 Docker 的多层镜像——bundle 是层,profile 是组合。</p>
+  <p><b>职责</b>: 启动时把若干 bundle 叠加,每层都能 patch 上一层的配置。</p>
+  <p><b>叠加顺序</b>:<br>
+  <code>profile.bundles[i] → profile.cordis.patch.yml → home cordis.patch.yml → --patch overlay</code></p>
+  <p><b>关键文件</b>: <code>packages/bundle/</code>(base/web-app/headless/sdk-app/acp-app/sdk-minimal),<code>packages/boot/app-boot/</code></p>
+  <p><b>调试</b>: <code>dsh --profile web --dump-config</code> 打印完整树</p>
+</div>
+
+<h2 id="how-to-read">🗺️ 推荐阅读路线</h2>
+
+<p>按 <b>Understanding-Optimism-Codebase</b> 的 <code>how-X-works</code> 命名法,本教程分 4 个 HTML 章节:</p>
+
+<table>
+  <tr><th>#</th><th>文件名</th><th>视角</th><th>来源 skill</th></tr>
+  <tr><td>00</td><td><a href="./00-overview.html">overview.html</a></td><td>总览</td><td>oh-my-mermaid perspective</td></tr>
+  <tr><td>01</td><td><a href="./01-plugin-system.html">plugin-system.html</a></td><td>插件系统递归下钻</td><td>oh-my-mermaid 递归</td></tr>
+  <tr><td>02</td><td><a href="./02-cordis-harness.html">cordis-harness.html</a></td><td>Cordis + 5 抽象</td><td>PocketFlow 抽象</td></tr>
+  <tr><td>03</td><td><a href="./03-package-tour.html">package-tour.html</a></td><td>52 packages 巡礼</td><td>agents-reverse-engineer</td></tr>
+  <tr><td>04</td><td><a href="./04-study-cards/">study-cards/</a></td><td>学习卡片</td><td>tutor-skills</td></tr>
+</table>
+
+<div class="callout tip">
+  <b>💡 阅读提示</b>: 每节独立成文,可按顺序看(推荐),也可挑感兴趣的章节跳读。每节都有 Mermaid 图、关键文件路径、ctx 键名;互相之间通过 wiki-link 串起来。
+</div>
+
+<footer>
+  Generated by Hermes Coder · 基于 6 个方法论 skill 验证 · 项目路径 <code>/home/lifenghu/src/deepseek-harness</code><br>
+  配套文档:<a href="../codebase-to-course-survey/readme.md">codebase-to-course-survey/readme.md</a>
+</footer>
+
+</div>
+
+<!-- Mermaid 渲染 -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>
+</body>
+</html>
